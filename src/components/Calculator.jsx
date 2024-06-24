@@ -3,7 +3,6 @@ import Display from './Display';
 import Button from './Button';
 
 const Calculator = () => {
-  const [inputValue, setInputValue] = useState('');
   const [displayValue, setDisplayValue] = useState('0');
   const [firstOperand, setFirstOperand] = useState(null);
   const [waitingForSecondOperand, setWaitingForSecondOperand] = useState(false);
@@ -13,22 +12,26 @@ const Calculator = () => {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 10 }).format(number);
   };
 
-  const handleInputChange = (event) => {
-    setInputValue(event.target.value);
-  };
-
   const inputDigit = (digit) => {
-    setInputValue(inputValue === '0' ? digit : inputValue + digit);
+    if (waitingForSecondOperand) {
+      setDisplayValue(digit);
+      setWaitingForSecondOperand(false);
+    } else {
+      setDisplayValue(displayValue === '0' ? digit : displayValue + digit);
+    }
   };
 
   const inputDot = () => {
-    if (!inputValue.includes('.')) {
-      setInputValue(inputValue + '.');
+    if (waitingForSecondOperand) {
+      setDisplayValue('0.');
+      setWaitingForSecondOperand(false);
+    } else if (!displayValue.includes('.')) {
+      setDisplayValue(displayValue + '.');
     }
   };
 
   const handleOperator = (nextOperator) => {
-    const inputValueNumber = parseFloat(inputValue.replace(/,/g, ''));
+    const inputValue = parseFloat(displayValue.replace(/,/g, ''));
 
     if (operator && waitingForSecondOperand) {
       setOperator(nextOperator);
@@ -36,16 +39,15 @@ const Calculator = () => {
     }
 
     if (firstOperand == null) {
-      setFirstOperand(inputValueNumber);
+      setFirstOperand(inputValue);
     } else if (operator) {
       const currentValue = firstOperand || 0;
-      const newValue = performCalculation[operator](currentValue, inputValueNumber);
+      const newValue = performCalculation[operator](currentValue, inputValue);
 
       setDisplayValue(formatNumber(newValue));
       setFirstOperand(newValue);
     }
 
-    setInputValue('');
     setWaitingForSecondOperand(true);
     setOperator(nextOperator);
   };
@@ -68,60 +70,68 @@ const Calculator = () => {
   };
 
   const handleSpecialOperator = (specialOperator) => {
-    const inputValueNumber = parseFloat(inputValue.replace(/,/g, ''));
-    const newValue = performCalculation[specialOperator](inputValueNumber);
+    const inputValue = parseFloat(displayValue.replace(/,/g, ''));
+    const newValue = performCalculation[specialOperator](inputValue);
     setDisplayValue(formatNumber(newValue));
-    setInputValue('');
     setFirstOperand(newValue);
     setWaitingForSecondOperand(true);
   };
 
   const clearAll = () => {
-    setInputValue('');
     setDisplayValue('0');
     setFirstOperand(null);
     setWaitingForSecondOperand(false);
     setOperator(null);
   };
 
+  const handleKeyPress = (event) => {
+    const { key } = event;
+
+    if (/\d/.test(key)) {
+      inputDigit(key);
+    } else if (key === '.') {
+      inputDot();
+    } else if (key in performCalculation) {
+      handleOperator(key);
+    } else if (key === 'Enter') {
+      handleOperator('=');
+    } else if (key === 'Backspace') {
+      clearAll();
+    }
+  };
+
   return (
-    <div className="calculator">
-      <input 
-        type="text" 
-        value={inputValue} 
-        onChange={handleInputChange} 
-        className="input-display" 
-      />
+    <div className="calculator" onKeyDown={handleKeyPress} tabIndex="0">
       <Display value={displayValue} />
       <div className="button-panel">
         <Button label="C" handleClick={clearAll} />
         <Button label="(" handleClick={inputDigit} />
         <Button label=")" handleClick={inputDigit} />
-        <Button label="√" handleClick={() => handleSpecialOperator('√')} />
-        <Button label="∛" handleClick={() => handleSpecialOperator('∛')} />
-        <Button label="log" handleClick={() => handleSpecialOperator('log')} />
-        <Button label="exp" handleClick={() => handleSpecialOperator('exp')} />
-        <Button label="x^3" handleClick={() => handleSpecialOperator('x^3')} />
-        <Button label="x^y" handleClick={() => handleOperator('^')} />
-        <Button label="sin" handleClick={() => handleSpecialOperator('sin')} />
-        <Button label="cos" handleClick={() => handleSpecialOperator('cos')} />
-        <Button label="tan" handleClick={() => handleSpecialOperator('tan')} />
-        <Button label="/" handleClick={() => handleOperator('/')} />
-        <Button label="*" handleClick={() => handleOperator('*')} />
-        <Button label="-" handleClick={() => handleOperator('-')} />
-        <Button label="+" handleClick={() => handleOperator('+')} />
-        <Button label="7" handleClick={() => inputDigit('7')} />
-        <Button label="8" handleClick={() => inputDigit('8')} />
-        <Button label="9" handleClick={() => inputDigit('9')} />
-        <Button label="4" handleClick={() => inputDigit('4')} />
-        <Button label="5" handleClick={() => inputDigit('5')} />
-        <Button label="6" handleClick={() => inputDigit('6')} />
-        <Button label="1" handleClick={() => inputDigit('1')} />
-        <Button label="2" handleClick={() => inputDigit('2')} />
-        <Button label="3" handleClick={() => inputDigit('3')} />
-        <Button label="0" handleClick={() => inputDigit('0')} />
+        <Button label="√" handleClick={handleSpecialOperator} />
+        <Button label="∛" handleClick={handleSpecialOperator} />
+        <Button label="log" handleClick={handleSpecialOperator} />
+        <Button label="exp" handleClick={handleSpecialOperator} />
+        <Button label="x^3" handleClick={handleSpecialOperator} />
+        <Button label="x^y" handleClick={handleOperator} />
+        <Button label="sin" handleClick={handleSpecialOperator} />
+        <Button label="cos" handleClick={handleSpecialOperator} />
+        <Button label="tan" handleClick={handleSpecialOperator} />
+        <Button label="/" handleClick={handleOperator} />
+        <Button label="*" handleClick={handleOperator} />
+        <Button label="-" handleClick={handleOperator} />
+        <Button label="+" handleClick={handleOperator} />
+        <Button label="7" handleClick={inputDigit} />
+        <Button label="8" handleClick={inputDigit} />
+        <Button label="9" handleClick={inputDigit} />
+        <Button label="4" handleClick={inputDigit} />
+        <Button label="5" handleClick={inputDigit} />
+        <Button label="6" handleClick={inputDigit} />
+        <Button label="1" handleClick={inputDigit} />
+        <Button label="2" handleClick={inputDigit} />
+        <Button label="3" handleClick={inputDigit} />
+        <Button label="0" handleClick={inputDigit} />
         <Button label="." handleClick={inputDot} />
-        <Button label="=" handleClick={() => handleOperator('=')} />
+        <Button label="=" handleClick={handleOperator} />
       </div>
     </div>
   );
